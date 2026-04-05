@@ -1,0 +1,42 @@
+{
+  "webapps": [
+    {
+      "name": "Admin Panel",
+      "path": "8080",
+      "protocol": "http",
+      "host": "host.docker.internal",
+      "webapp": true
+    },
+    {
+      "name": "Secure Dashboard",
+      "path": "8443",
+      "protocol": "https",
+      "host": "host.docker.internal",
+      "webapp": true
+    }
+  ],
+  "services": [
+    {
+      "name": "Backend API",
+      "port": "3001",
+      "protocol": "tcp",
+      "host": "host.docker.internal",
+      "webapp": false
+    },
+    {
+      "name": "MySQL",
+      "port": "3306",
+      "protocol": "tcp",
+      "host": "host.docker.internal",
+      "webapp": false
+    },
+    {
+      "name": "Manual Service",
+      "port": "9999",
+      "protocol": "tcp",
+      "probe": false,
+      "status": "checking",
+      "webapp": false
+    }
+  ]
+}
