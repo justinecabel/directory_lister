@@ -1,0 +1,27 @@
+{
+    "webapps": [
+        {
+            "name": "PLDT Admin",
+            "path": "8080",
+            "protocol": "http",
+            "webapp": true
+        },{
+            "name": "phpMyAdmin",
+            "path": "8000",
+            "protocol": "http",
+            "webapp": true
+        }
+    ],
+    "services": [
+        {
+            "name": "Open-Route Backend",
+            "port": "3001",
+            "webapp": false
+        },{
+            "name": "mySQL",
+            "port": "3306",
+            "protocol": "tcp",
+            "webapp": false
+        }
+    ]
+}

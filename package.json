@@ -1,0 +1,10 @@
+{
+  "name": "directory-list-status-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Status API for HTTP and TCP services in the local directory list",
+  "main": "status-server.js",
+  "scripts": {
+    "start": "node status-server.js"
+  }
+}

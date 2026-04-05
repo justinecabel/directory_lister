@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <button id="theme" class="theme-fab" type="button" aria-label="Toggle theme" title="Toggle theme">&#x263E;</button>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <h1 class="title">Local Services</h1>
+      </div>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section class="controls">
+      <div class="search">
+        <input id="search" type="search" placeholder="Search" />
+      </div>
+      <div class="button-group">
+        <button id="refresh" type="button" title="Refresh status">&#x27F3;</button>
+        <button id="sort" type="button">Sort: List</button>
+      </div>
+    </section>
+
+    <div class="tabs" id="tabs-container"></div>
+    <div id="content-container"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
