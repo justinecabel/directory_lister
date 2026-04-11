@@ -53,6 +53,7 @@ The list file is grouped by category. Each category contains an array of apps or
       "name": "Secure Dashboard",
       "path": "8443",
       "protocol": "https",
+      "allowInsecureTls": true,
       "webapp": true
     }
   ],
@@ -92,6 +93,7 @@ The list file is grouped by category. Each category contains an array of apps or
 - `webapp`: UI hint that marks an item as a browser-based app.
 - `probe`: Set to `false` to skip live probing for that item.
 - `status`: Optional fallback status when probing is skipped. Valid values are `up`, `down`, and `checking`.
+- `allowInsecureTls`: Optional for `https` checks. Set to `true` for local services that use self-signed or otherwise untrusted certificates.
 
 ## API endpoints
 

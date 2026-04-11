@@ -1,4 +1,5 @@
 const http = require("http");
+const https = require("https");
 const net = require("net");
 const fs = require("fs/promises");
 const path = require("path");
@@ -54,31 +55,46 @@ const probeTcp = ({ host, port, timeoutMs }) =>
     socket.connect(port, host);
   });
 
-const probeHttp = async ({ protocol, host, port, timeoutMs }) => {
-  const target = `${protocol}://${host}:${port}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+const getAllowInsecureTls = (app, data) => {
+  if (typeof app.allowInsecureTls === "boolean") return app.allowInsecureTls;
+  if (typeof app.insecureTls === "boolean") return app.insecureTls;
+  if (typeof data.allowInsecureTls === "boolean") return data.allowInsecureTls;
+  if (typeof data.insecureTls === "boolean") return data.insecureTls;
+  return false;
+};
 
-  try {
-    const response = await fetch(target, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal
+const probeHttp = ({ protocol, host, port, timeoutMs, allowInsecureTls = false }) =>
+  new Promise((resolve) => {
+    const transport = protocol === "https" ? https : http;
+    const req = transport.request(
+      {
+        host,
+        port,
+        method: "GET",
+        rejectUnauthorized: protocol === "https" ? !allowInsecureTls : undefined
+      },
+      (response) => {
+        response.resume();
+        resolve({
+          status: response.statusCode < 500 ? "up" : "down",
+          httpStatus: response.statusCode
+        });
+      }
+    );
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error("timeout"));
     });
 
-    return {
-      status: response.ok || response.status < 500 ? "up" : "down",
-      httpStatus: response.status
-    };
-  } catch (error) {
-    return {
-      status: "down",
-      error: error.name === "AbortError" ? "timeout" : error.message
-    };
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
+    req.once("error", (error) => {
+      resolve({
+        status: "down",
+        error: error.message
+      });
+    });
+
+    req.end();
+  });
 
 const parseProbeRequest = (req) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -125,7 +141,7 @@ const canProbeApp = (app) => {
   return getAppPort(app) !== null;
 };
 
-const probeApp = async (app, defaultHost) => {
+const probeApp = async (app, defaultHost, data) => {
   if (!canProbeApp(app)) {
     return {
       ...app,
@@ -138,7 +154,8 @@ const probeApp = async (app, defaultHost) => {
     host: getAppHost(app, defaultHost),
     port: getAppPort(app),
     protocol,
-    timeoutMs: PROBE_TIMEOUT_MS
+    timeoutMs: PROBE_TIMEOUT_MS,
+    allowInsecureTls: getAllowInsecureTls(app, data)
   };
 
   const result = isHttpProtocol(protocol)
@@ -171,7 +188,7 @@ const buildAppsPayload = async () => {
   await Promise.all(
     categories.map(async (category) => {
       if (!Array.isArray(data[category])) return;
-      data[category] = await Promise.all(data[category].map((app) => probeApp(app, defaultHost)));
+      data[category] = await Promise.all(data[category].map((app) => probeApp(app, defaultHost, data)));
     })
   );
 

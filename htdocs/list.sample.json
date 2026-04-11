@@ -11,6 +11,7 @@
       "name": "Secure Dashboard",
       "path": "8443",
       "protocol": "https",
+      "allowInsecureTls": true,
       "webapp": true
     }
   ],
