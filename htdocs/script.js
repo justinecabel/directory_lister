@@ -150,7 +150,8 @@ const createDynamicTabs = (data) => {
 
 const buildUrl = (app) => {
   const protocol = app.protocol || "http";
-  return `${protocol}://${baseHost}:${app.path}`;
+  const host = app.host || baseHost;
+  return `${protocol}://${host}:${app.path}`;
 };
 
 const getAppKey = (app, category) => {

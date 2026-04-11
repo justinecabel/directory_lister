@@ -41,19 +41,18 @@ The list file is grouped by category. Each category contains an array of apps or
 
 ```json
 {
+  "host": "host.docker.internal",
   "webapps": [
     {
       "name": "Admin Panel",
       "path": "8080",
       "protocol": "http",
-      "host": "host.docker.internal",
       "webapp": true
     },
     {
       "name": "Secure Dashboard",
       "path": "8443",
       "protocol": "https",
-      "host": "host.docker.internal",
       "webapp": true
     }
   ],
@@ -62,14 +61,12 @@ The list file is grouped by category. Each category contains an array of apps or
       "name": "Backend API",
       "port": "3001",
       "protocol": "tcp",
-      "host": "host.docker.internal",
       "webapp": false
     },
     {
       "name": "MySQL",
       "port": "3306",
       "protocol": "tcp",
-      "host": "host.docker.internal",
       "webapp": false
     },
     {
@@ -87,10 +84,11 @@ The list file is grouped by category. Each category contains an array of apps or
 ## Field reference
 
 - `name`: Display name shown in the dashboard.
+- `host`: Optional default hostname or IP address for all entries. Defaults to `host.docker.internal`.
 - `path`: Commonly used for web apps. If `port` is not set, this value is also used as the probe port.
 - `port`: Explicit port to probe.
 - `protocol`: Use `http` or `https` for web checks. Any other value is treated as a TCP check.
-- `host`: Optional hostname or IP address. Defaults to `host.docker.internal`.
+- `host` on an item: Optional per-entry override for the default host.
 - `webapp`: UI hint that marks an item as a browser-based app.
 - `probe`: Set to `false` to skip live probing for that item.
 - `status`: Optional fallback status when probing is skipped. Valid values are `up`, `down`, and `checking`.

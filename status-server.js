@@ -98,9 +98,14 @@ const parseProbeRequest = (req) => {
   };
 };
 
-const getAppHost = (app) => {
-  const host = String(app.host || "").trim();
+const getDefaultHost = (data) => {
+  const host = String(data.host || "").trim();
   return host || "host.docker.internal";
+};
+
+const getAppHost = (app, defaultHost) => {
+  const host = String(app.host || "").trim();
+  return host || defaultHost;
 };
 
 const getAppPort = (app) => {
@@ -120,7 +125,7 @@ const canProbeApp = (app) => {
   return getAppPort(app) !== null;
 };
 
-const probeApp = async (app) => {
+const probeApp = async (app, defaultHost) => {
   if (!canProbeApp(app)) {
     return {
       ...app,
@@ -130,7 +135,7 @@ const probeApp = async (app) => {
 
   const protocol = getAppProtocol(app);
   const request = {
-    host: getAppHost(app),
+    host: getAppHost(app, defaultHost),
     port: getAppPort(app),
     protocol,
     timeoutMs: PROBE_TIMEOUT_MS
@@ -160,12 +165,13 @@ const readApps = async () => {
 
 const buildAppsPayload = async () => {
   const data = cloneData(await readApps());
+  const defaultHost = getDefaultHost(data);
   const categories = Object.keys(data);
 
   await Promise.all(
     categories.map(async (category) => {
       if (!Array.isArray(data[category])) return;
-      data[category] = await Promise.all(data[category].map((app) => probeApp(app)));
+      data[category] = await Promise.all(data[category].map((app) => probeApp(app, defaultHost)));
     })
   );
 
