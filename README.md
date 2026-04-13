@@ -41,7 +41,6 @@ The list file is grouped by category. Each category contains an array of apps or
 
 ```json
 {
-  "host": "host.docker.internal",
   "webapps": [
     {
       "name": "Admin Panel",
@@ -85,7 +84,7 @@ The list file is grouped by category. Each category contains an array of apps or
 ## Field reference
 
 - `name`: Display name shown in the dashboard.
-- `host`: Optional default hostname or IP address for all entries. Defaults to `host.docker.internal`.
+- `host`: Optional default hostname or IP address for all entries. If omitted, the API uses the hostname from the current request.
 - `path`: Commonly used for web apps. If `port` is not set, this value is also used as the probe port.
 - `port`: Explicit port to probe.
 - `protocol`: Use `http` or `https` for web checks. Any other value is treated as a TCP check.
@@ -99,11 +98,12 @@ The list file is grouped by category. Each category contains an array of apps or
 
 - `GET /health`: Basic health check.
 - `GET /apps`: Returns all configured categories with live status results.
-- `GET /status?host=host.docker.internal&port=3001&protocol=tcp`: Probes a single target on demand.
+- `GET /status?port=3001&protocol=tcp`: Probes a single target on demand using the current request hostname by default.
 
 ## Notes
 
 - The API defaults to port `3002`.
 - Probe timeout defaults to `2500ms`.
+- Failed probes retry for up to `60000ms` total by default.
 - The UI and API are designed for local development environments.
 - If an item has `probe: false`, the API keeps the provided `status` instead of performing a live check.

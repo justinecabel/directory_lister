@@ -8,6 +8,8 @@ const { URL } = require("url");
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT || 3002);
 const PROBE_TIMEOUT_MS = Number(process.env.PROBE_TIMEOUT_MS || 2500);
+const PROBE_RETRY_WINDOW_MS = Number(process.env.PROBE_RETRY_WINDOW_MS || 60000);
+const PROBE_RETRY_DELAY_MS = Number(process.env.PROBE_RETRY_DELAY_MS || 1000);
 const LIST_PATH = path.join(__dirname, "htdocs", "list.json");
 
 const sendJson = (res, statusCode, payload) => {
@@ -34,6 +36,16 @@ const normalizeStatus = (status) => {
 };
 
 const cloneData = (value) => JSON.parse(JSON.stringify(value));
+const getRequestHostname = (req) => {
+  const hostHeader = String(req.headers.host || "").trim();
+  if (!hostHeader) return "localhost";
+
+  try {
+    return new URL(`http://${hostHeader}`).hostname || "localhost";
+  } catch {
+    return hostHeader.split(":")[0] || "localhost";
+  }
+};
 
 const probeTcp = ({ host, port, timeoutMs }) =>
   new Promise((resolve) => {
@@ -96,9 +108,48 @@ const probeHttp = ({ protocol, host, port, timeoutMs, allowInsecureTls = false }
     req.end();
   });
 
+const wait = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, Math.max(0, ms));
+  });
+
+const probeOnce = (request) =>
+  isHttpProtocol(request.protocol)
+    ? probeHttp(request)
+    : probeTcp(request);
+
+const probeWithRetry = async (request) => {
+  const startedAt = Date.now();
+  let attempts = 0;
+  let lastResult = null;
+
+  do {
+    attempts += 1;
+    lastResult = await probeOnce(request);
+
+    if (lastResult.status === "up") {
+      return {
+        ...lastResult,
+        attempts
+      };
+    }
+
+    const elapsedMs = Date.now() - startedAt;
+    const remainingMs = PROBE_RETRY_WINDOW_MS - elapsedMs;
+    if (remainingMs <= 0) break;
+
+    await wait(Math.min(PROBE_RETRY_DELAY_MS, remainingMs));
+  } while (true);
+
+  return {
+    ...lastResult,
+    attempts
+  };
+};
+
 const parseProbeRequest = (req) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-  const host = (url.searchParams.get("host") || "").trim() || "host.docker.internal";
+  const host = (url.searchParams.get("host") || "").trim() || getRequestHostname(req);
   const port = Number(url.searchParams.get("port"));
   const protocol = (url.searchParams.get("protocol") || "").trim().toLowerCase();
 
@@ -114,9 +165,9 @@ const parseProbeRequest = (req) => {
   };
 };
 
-const getDefaultHost = (data) => {
+const getDefaultHost = (data, fallbackHost) => {
   const host = String(data.host || "").trim();
-  return host || "host.docker.internal";
+  return host || fallbackHost || "localhost";
 };
 
 const getAppHost = (app, defaultHost) => {
@@ -158,9 +209,7 @@ const probeApp = async (app, defaultHost, data) => {
     allowInsecureTls: getAllowInsecureTls(app, data)
   };
 
-  const result = isHttpProtocol(protocol)
-    ? await probeHttp(request)
-    : await probeTcp(request);
+  const result = await probeWithRetry(request);
 
   return {
     ...app,
@@ -169,6 +218,7 @@ const probeApp = async (app, defaultHost, data) => {
       host: request.host,
       port: request.port,
       protocol: protocol || "tcp",
+      attempts: result.attempts,
       ...(result.httpStatus ? { httpStatus: result.httpStatus } : {}),
       ...(result.error ? { error: result.error } : {})
     }
@@ -180,9 +230,9 @@ const readApps = async () => {
   return JSON.parse(raw);
 };
 
-const buildAppsPayload = async () => {
+const buildAppsPayload = async (fallbackHost) => {
   const data = cloneData(await readApps());
-  const defaultHost = getDefaultHost(data);
+  const defaultHost = getDefaultHost(data, fallbackHost);
   const categories = Object.keys(data);
 
   await Promise.all(
@@ -215,9 +265,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const result = isHttpProtocol(probeRequest.protocol)
-      ? await probeHttp(probeRequest)
-      : await probeTcp(probeRequest);
+    const result = await probeWithRetry(probeRequest);
 
     sendJson(res, 200, {
       host: probeRequest.host,
@@ -230,7 +278,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/apps") {
     try {
-      const data = await buildAppsPayload();
+      const data = await buildAppsPayload(getRequestHostname(req));
       sendJson(res, 200, data);
     } catch (error) {
       sendJson(res, 500, { error: error.message });
